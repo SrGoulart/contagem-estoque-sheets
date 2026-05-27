@@ -1,0 +1,6 @@
+{
+  "name": "contagem-estoque-sheets",
+  "version": "1.0.0",
+  "description": "Contagem de estoque — consulta e registra tudo via Google Sheets",
+  "private": true
+}

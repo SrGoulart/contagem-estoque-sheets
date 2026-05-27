@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contagem de Estoque</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f5f4f0; --surface: #fff; --border: #e2e0da;
+      --text: #1a1a18; --muted: #6b6b66;
+      --green: #1D9E75; --green-light: #E1F5EE; --green-dark: #0F6E56;
+      --blue: #185FA5; --blue-light: #E6F1FB;
+      --red: #A32D2D; --red-light: #FCEBEB;
+      --amber: #BA7517; --amber-light: #FAEEDA;
+      --radius: 12px; --radius-sm: 8px;
+    }
+    body { font-family: 'IBM Plex Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    .screen { display: none; max-width: 480px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+    .screen.active { display: block; }
+
+    .app-header { display: flex; align-items: center; gap: 10px; margin-bottom: 1.75rem; }
+    .app-header .logo { width: 38px; height: 38px; background: var(--text); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .app-header .logo svg { width: 20px; height: 20px; fill: none; stroke: #fff; stroke-width: 2; }
+    .app-header h1 { font-size: 17px; font-weight: 600; line-height: 1.2; }
+    .app-header p { font-size: 12px; color: var(--muted); }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
+    .card-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 14px; }
+
+    input[type=text], input[type=number] {
+      width: 100%; padding: 10px 13px; font-size: 15px; font-family: inherit;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--bg); color: var(--text); outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      -webkit-appearance: none;
+    }
+    input:focus { border-color: var(--text); box-shadow: 0 0 0 3px rgba(26,26,24,0.08); }
+    .field { margin-bottom: 12px; }
+    .field label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 5px; }
+    .field .hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    button {
+      font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer;
+      padding: 10px 18px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+      background: var(--surface); color: var(--text); transition: all 0.15s;
+    }
+    button:active { transform: scale(0.97); }
+    .btn-primary { background: var(--text); color: #fff; border-color: var(--text); width: 100%; padding: 14px; font-size: 15px; border-radius: var(--radius); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .btn-secondary { background: var(--bg); width: 100%; padding: 12px; border-radius: var(--radius); }
+    .btn-sm { padding: 7px 13px; font-size: 13px; }
+    .btn-danger { background: var(--red-light); color: var(--red); border-color: #f5c6c6; }
+    .btn-success { background: var(--green); color: #fff; border-color: var(--green-dark); width: 100%; padding: 14px; font-size: 15px; border-radius: var(--radius); }
+
+    .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+    .badge-green { background: var(--green-light); color: var(--green-dark); }
+    .badge-red { background: var(--red-light); color: var(--red); }
+    .badge-amber { background: var(--amber-light); color: var(--amber); }
+    .badge-blue { background: var(--blue-light); color: var(--blue); }
+
+    .produto-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
+    .produto-nome { font-size: 14px; font-weight: 600; line-height: 1.4; margin-bottom: 4px; }
+    .produto-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+    .produto-ref { font-size: 12px; color: var(--muted); }
+    .produto-detalhes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+    .detalhe-item { background: var(--bg); border-radius: var(--radius-sm); padding: 7px 10px; }
+    .detalhe-item .lbl { font-size: 10px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .detalhe-item .val { font-size: 13px; font-weight: 600; margin-top: 2px; }
+
+    .qty-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+    .qty-row input { flex: 1; font-size: 20px; font-weight: 600; text-align: center; padding: 12px; }
+    .qty-btn { width: 46px; height: 46px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; border-radius: var(--radius-sm); }
+
+    .diff-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 13px; border-radius: var(--radius-sm); margin-top: 8px; }
+    .diff-row.ok { background: var(--green-light); }
+    .diff-row.falta { background: var(--red-light); }
+    .diff-row.excesso { background: var(--amber-light); }
+    .diff-label { font-size: 12px; font-weight: 600; }
+    .diff-val { font-size: 18px; font-weight: 700; }
+
+    .search-wrap { position: relative; margin-bottom: 1rem; }
+    .search-wrap input { padding-left: 36px; }
+    .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--muted); pointer-events: none; }
+
+    .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty-state { text-align: center; padding: 3rem 1rem; color: var(--muted); }
+    .empty-state svg { width: 48px; height: 48px; margin: 0 auto 12px; display: block; opacity: 0.4; }
+    .empty-state p { font-size: 14px; }
+
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--text); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 500; transition: transform 0.3s; z-index: 100; white-space: nowrap; }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    .section-title { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
+
+    .back-btn { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; background: none; border: none; padding: 0; margin-bottom: 1.25rem; }
+    .back-btn svg { width: 16px; height: 16px; }
+    .user-info { display: flex; align-items: center; gap: 8px; padding: 10px 13px; background: var(--green-light); border-radius: var(--radius-sm); margin-bottom: 1rem; font-size: 13px; color: var(--green-dark); font-weight: 500; }
+    .divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+    .loading-overlay { position: fixed; inset: 0; background: rgba(245,244,240,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 200; gap: 10px; }
+    .loading-overlay .sp { width: 30px; height: 30px; border: 3px solid var(--border); border-top-color: var(--text); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    .loading-overlay p { font-size: 14px; color: var(--muted); }
+  </style>
+</head>
+<body>
+
+<!-- TELA 1: IDENTIFICAÇÃO -->
+<div id="s-perfil" class="screen active">
+  <div class="app-header">
+    <div class="logo">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    </div>
+    <div><h1>Contagem de Estoque</h1><p>Identifique-se para começar</p></div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Seus dados</div>
+    <div class="field">
+      <label>Seu nome</label>
+      <input type="text" id="inp-nome" placeholder="Nome completo" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Setor / Área</label>
+      <input type="text" id="inp-setor" placeholder="Ex: Almoxarifado, Manutenção..." autocomplete="off">
+    </div>
+  </div>
+
+  <button class="btn-primary" id="btn-iniciar" disabled>Iniciar Contagem</button>
+</div>
+
+<!-- TELA 2: BUSCA DE PRODUTO -->
+<div id="s-busca" class="screen">
+  <div class="app-header">
+    <div class="logo">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    </div>
+    <div><h1>Contagem de Estoque</h1><p id="hdr-operador">—</p></div>
+  </div>
+
+  <div id="user-banner" class="user-info">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span id="banner-nome">—</span>
+  </div>
+
+  <div class="search-wrap">
+    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="inp-busca" placeholder="Código ou referência do produto..." autocomplete="off" inputmode="text">
+  </div>
+
+  <div id="resultado-busca"></div>
+</div>
+
+<!-- TELA 3: REGISTRO DA CONTAGEM -->
+<div id="s-contagem" class="screen">
+  <button class="back-btn" id="btn-voltar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+    Voltar à busca
+  </button>
+
+  <div id="produto-info"></div>
+
+  <div class="card" style="margin-top:1rem">
+    <div class="card-label">Quantidade contada</div>
+    <div class="qty-row">
+      <button class="qty-btn" id="btn-menos">−</button>
+      <input type="number" id="inp-qtd" value="0" min="0" step="1" inputmode="numeric">
+      <button class="qty-btn" id="btn-mais">+</button>
+    </div>
+    <div id="diff-display"></div>
+  </div>
+
+  <button class="btn-success" id="btn-confirmar">
+    <span id="btn-confirm-text">Confirmar Contagem</span>
+  </button>
+  <button class="btn-secondary" id="btn-nova" style="margin-top:8px">Contar outro produto</button>
+</div>
+
+<!-- TELA 4: SUCESSO -->
+<div id="s-sucesso" class="screen">
+  <div style="text-align:center;padding:2rem 0 1.5rem">
+    <div style="width:64px;height:64px;background:var(--green-light);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" width="28" height="28"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h2 style="font-size:20px;margin-bottom:6px">Contagem registrada!</h2>
+    <p style="font-size:13px;color:var(--muted)">Salvo no Google Sheets com sucesso.</p>
+  </div>
+
+  <div id="resumo-card" class="card"></div>
+
+  <button class="btn-primary" id="btn-contar-mais" style="margin-top:1rem">Contar mais produtos</button>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="loading-overlay" id="loading" style="display:none"><div class="sp"></div><p id="loading-msg">Buscando produto...</p></div>
+
+<script>
+// ─── ESTADO ─────────────────────────────────────────────────────────────────
+const state = {
+  nome: '', setor: '', email: '',
+  produto: null,
+  qtd: 0,
+  timeout: null
+};
+
+// ─── UTILS ──────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+function toast(msg, dur = 2500) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+function loading(show, msg = 'Aguarde...') {
+  $('loading').style.display = show ? 'flex' : 'none';
+  $('loading-msg').textContent = msg;
+}
+function fmt(n) {
+  const num = parseFloat(String(n).replace(',','.')) || 0;
+  return num.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+// ─── TELA 1: IDENTIFICAÇÃO ──────────────────────────────────────────────────
+['inp-nome','inp-setor'].forEach(id => {
+  $(id).addEventListener('input', () => {
+    $('btn-iniciar').disabled = !$('inp-nome').value.trim() || !$('inp-setor').value.trim();
+  });
+});
+
+$('btn-iniciar').addEventListener('click', () => {
+  state.nome = $('inp-nome').value.trim();
+  state.setor = $('inp-setor').value.trim();
+  $('hdr-operador').textContent = state.setor;
+  $('banner-nome').textContent = `${state.nome} · ${state.setor}`;
+  show('s-busca');
+  $('inp-busca').focus();
+});
+
+// ─── TELA 2: BUSCA ──────────────────────────────────────────────────────────
+$('inp-busca').addEventListener('input', e => {
+  clearTimeout(state.timeout);
+  const q = e.target.value.trim();
+  if (q.length < 2) { $('resultado-busca').innerHTML = ''; return; }
+  state.timeout = setTimeout(() => buscarProduto(q), 350);
+});
+
+async function buscarProduto(q) {
+  loading(true, 'Buscando produto...');
+  try {
+    const res = await fetch(`/api/produto?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    loading(false);
+    if (!data || data.error) {
+      $('resultado-busca').innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg><p>Produto não encontrado.<br>Verifique o código ou referência.</p></div>`;
+      return;
+    }
+    renderResultado(data);
+  } catch (err) {
+    loading(false);
+    $('resultado-busca').innerHTML = `<div class="empty-state"><p>Erro ao buscar. Tente novamente.</p></div>`;
+  }
+}
+
+function renderResultado(p) {
+  const situBadge = p.situacao?.trim() === 'Ativo' 
+    ? `<span class="badge badge-green">Ativo</span>`
+    : `<span class="badge badge-red">${p.situacao?.trim() || 'Inativo'}</span>`;
+
+  $('resultado-busca').innerHTML = `
+    <div class="section-title">Produto encontrado</div>
+    <div class="produto-card" id="card-resultado" style="cursor:pointer">
+      <div class="produto-meta">${situBadge}<span class="produto-ref">Cód: ${p.codProduto}</span><span class="produto-ref">Ref: ${p.referencia}</span></div>
+      <div class="produto-nome">${p.descricao}</div>
+      <div class="produto-detalhes">
+        <div class="detalhe-item"><div class="lbl">Unidade</div><div class="val">${p.unidade?.trim() || '—'}</div></div>
+        <div class="detalhe-item"><div class="lbl">Estoque sistema</div><div class="val">${fmt(p.estoqueAtual)}</div></div>
+        <div class="detalhe-item"><div class="lbl">Classe</div><div class="val" style="font-size:11px">${p.classeMaterial || '—'}</div></div>
+        <div class="detalhe-item"><div class="lbl">Local</div><div class="val" style="font-size:11px">${p.local?.trim() || '—'}</div></div>
+      </div>
+      <button class="btn-primary" style="margin-top:14px">Registrar contagem →</button>
+    </div>`;
+
+  document.getElementById('card-resultado').addEventListener('click', () => abrirContagem(p));
+}
+
+// ─── TELA 3: CONTAGEM ───────────────────────────────────────────────────────
+function abrirContagem(p) {
+  state.produto = p;
+  state.qtd = 0;
+  $('inp-qtd').value = 0;
+
+  const situBadge = p.situacao?.trim() === 'Ativo'
+    ? `<span class="badge badge-green">Ativo</span>`
+    : `<span class="badge badge-red">${p.situacao?.trim() || 'Inativo'}</span>`;
+
+  $('produto-info').innerHTML = `
+    <div class="produto-card">
+      <div class="produto-meta">${situBadge}<span class="produto-ref">Cód: ${p.codProduto}</span></div>
+      <div class="produto-nome">${p.descricao}</div>
+      <div class="produto-detalhes">
+        <div class="detalhe-item"><div class="lbl">Unidade</div><div class="val">${p.unidade?.trim() || '—'}</div></div>
+        <div class="detalhe-item"><div class="lbl">Estoque sistema</div><div class="val">${fmt(p.estoqueAtual)}</div></div>
+        <div class="detalhe-item"><div class="lbl">Local</div><div class="val" style="font-size:11px">${p.local?.trim() || '—'}</div></div>
+        <div class="detalhe-item"><div class="lbl">Custo unit.</div><div class="val">R$ ${fmt(p.custo)}</div></div>
+      </div>
+    </div>`;
+
+  atualizarDiff();
+  show('s-contagem');
+}
+
+$('btn-menos').addEventListener('click', () => { if (state.qtd > 0) { state.qtd--; $('inp-qtd').value = state.qtd; atualizarDiff(); } });
+$('btn-mais').addEventListener('click', () => { state.qtd++; $('inp-qtd').value = state.qtd; atualizarDiff(); });
+$('inp-qtd').addEventListener('input', e => { state.qtd = Math.max(0, parseInt(e.target.value) || 0); $('inp-qtd').value = state.qtd; atualizarDiff(); });
+
+function atualizarDiff() {
+  const estoque = parseFloat(String(state.produto?.estoqueAtual || 0).replace(',','.')) || 0;
+  const diff = state.qtd - estoque;
+  let cls = 'ok', label = 'Confere com sistema', sinal = '';
+  if (diff > 0) { cls = 'excesso'; label = 'Excesso'; sinal = '+'; }
+  if (diff < 0) { cls = 'falta'; label = 'Falta'; }
+  $('diff-display').innerHTML = `<div class="diff-row ${cls}"><span class="diff-label">${label}</span><span class="diff-val">${sinal}${fmt(diff)}</span></div>`;
+}
+
+$('btn-voltar').addEventListener('click', () => show('s-busca'));
+$('btn-nova').addEventListener('click', () => show('s-busca'));
+
+$('btn-confirmar').addEventListener('click', async () => {
+  const p = state.produto;
+  if (!p) return;
+  const estoque = parseFloat(String(p.estoqueAtual || 0).replace(',','.')) || 0;
+  const diff = state.qtd - estoque;
+
+  $('btn-confirmar').disabled = true;
+  $('btn-confirm-text').innerHTML = '<span class="spinner"></span>';
+
+  try {
+    const body = {
+      codProduto: p.codProduto, referencia: p.referencia, situacao: p.situacao,
+      descricao: p.descricao, unidade: p.unidade, codClasse: p.codClasse,
+      classeMaterial: p.classeMaterial, local: p.local, custo: p.custo,
+      estoqueAtual: estoque, qtdContada: state.qtd, diferenca: diff,
+      operador: state.nome, setor: state.setor
+    };
+    const res = await fetch('/api/contagem', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Erro ao salvar');
+
+    // Tela de sucesso
+    const statusCls = diff === 0 ? 'badge-green' : diff > 0 ? 'badge-amber' : 'badge-red';
+    const statusTxt = diff === 0 ? 'Conferido' : diff > 0 ? `Excesso: +${fmt(diff)}` : `Falta: ${fmt(diff)}`;
+    $('resumo-card').innerHTML = `
+      <div class="produto-meta" style="margin-bottom:8px"><span class="badge ${statusCls}">${statusTxt}</span></div>
+      <div style="font-weight:600;margin-bottom:10px">${p.descricao}</div>
+      <div class="divider"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+        <div><div style="font-size:11px;color:var(--muted)">Sistema</div><div style="font-weight:700;font-size:16px">${fmt(estoque)}</div></div>
+        <div><div style="font-size:11px;color:var(--muted)">Contado</div><div style="font-weight:700;font-size:16px">${fmt(state.qtd)}</div></div>
+      </div>`;
+    show('s-sucesso');
+  } catch(err) {
+    toast('Erro ao salvar. Tente novamente.');
+  } finally {
+    $('btn-confirmar').disabled = false;
+    $('btn-confirm-text').textContent = 'Confirmar Contagem';
+  }
+});
+
+$('btn-contar-mais').addEventListener('click', () => {
+  $('inp-busca').value = '';
+  $('resultado-busca').innerHTML = '';
+  show('s-busca');
+});
+</script>
+</body>
+</html>
