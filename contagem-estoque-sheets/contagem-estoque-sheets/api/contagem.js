@@ -9,6 +9,7 @@ export default async function handler(req, res) {
     codProduto, referencia, situacao, descricao, unidade,
     codClasse, classeMaterial, local, custo,
     estoqueAtual, qtdContada, tipoContagem,
+    localCorreto, localEncontrado,
     operador, setor
   } = req.body;
 
@@ -32,7 +33,8 @@ export default async function handler(req, res) {
         'Data/Hora', 'Operador', 'Setor',
         'Cod Produto', 'Referencia', 'Situacao', 'Descricao',
         'Unidade', 'Cod Classe', 'Classe Material', 'Local',
-        'Custo Unit.', 'Estoque Sistema', 'Qtd Contada', 'Contagem'
+        'Custo Unit.', 'Estoque Sistema', 'Qtd Contada', 'Contagem',
+        'Local Correto', 'Local Encontrado'
       ]]);
     }
 
@@ -40,7 +42,8 @@ export default async function handler(req, res) {
       agora, operador, setor,
       String(codProduto), referencia, situacao, descricao,
       unidade, String(codClasse || ''), classeMaterial, local,
-      custo, estoqueAtual, qtdContada, tipoContagem || 'Primeira Contagem'
+      custo, estoqueAtual, qtdContada, tipoContagem || 'Primeira Contagem',
+      localCorreto || 'Sim', localEncontrado || ''
     ]]);
 
     return res.status(200).json({ ok: true });
