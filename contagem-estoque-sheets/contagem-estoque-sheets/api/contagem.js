@@ -1,7 +1,8 @@
-// api/contagem.js
-// Grava contagem no Google Sheets via Service Account
 const SHEET_ID   = process.env.SHEET_ID_CONTAGEM || '1SoBoFdFTaOxNEFK9YBEFCqqrrEBf30oikkYVug18UQA';
 const SHEETS_KEY = process.env.SHEETS_KEY;
+// Alternativa: chave separada do JSON (resolve problema de escape na Vercel)
+const PRIVATE_KEY = process.env.PRIVATE_KEY;
+const CLIENT_EMAIL = process.env.CLIENT_EMAIL || 'estoque@scanner-estoque.iam.gserviceaccount.com';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -21,10 +22,20 @@ export default async function handler(req, res) {
   const status = diferenca === 0 ? 'OK' : diferenca > 0 ? 'EXCESSO' : 'FALTA';
 
   try {
-    if (!SHEETS_KEY) throw new Error('SHEETS_KEY não configurada');
+    // Monta o objeto da service account — aceita JSON completo OU variáveis separadas
+    let keyObj;
+    if (SHEETS_KEY) {
+      keyObj = JSON.parse(SHEETS_KEY);
+    } else if (PRIVATE_KEY && CLIENT_EMAIL) {
+      keyObj = {
+        client_email: CLIENT_EMAIL,
+        private_key: PRIVATE_KEY.replace(/\\n/g, '\n')
+      };
+    } else {
+      throw new Error('Credenciais não configuradas (SHEETS_KEY ou PRIVATE_KEY)');
+    }
 
-    const keyObj = JSON.parse(SHEETS_KEY);
-    const token  = await getServiceAccountToken(keyObj);
+    const token = await getServiceAccountToken(keyObj);
 
     // Garante cabeçalho na primeira vez
     const check = await fetch(
@@ -97,6 +108,7 @@ async function getServiceAccountToken(key) {
     body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`
   });
   const d = await resp.json();
+  if (!d.access_token) throw new Error('Token inválido: ' + JSON.stringify(d));
   return d.access_token;
 }
 
