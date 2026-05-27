@@ -170,7 +170,6 @@
       <input type="number" id="inp-qtd" value="0" min="0" step="1" inputmode="numeric">
       <button class="qty-btn" id="btn-mais">+</button>
     </div>
-    <div id="diff-display"></div>
   </div>
 
   <button class="btn-success" id="btn-confirmar">
@@ -279,7 +278,6 @@ function renderResultado(p) {
       <div class="produto-nome">${p.descricao}</div>
       <div class="produto-detalhes">
         <div class="detalhe-item"><div class="lbl">Unidade</div><div class="val">${p.unidade?.trim() || '—'}</div></div>
-        <div class="detalhe-item"><div class="lbl">Estoque sistema</div><div class="val">${fmt(p.estoqueAtual)}</div></div>
         <div class="detalhe-item"><div class="lbl">Classe</div><div class="val" style="font-size:11px">${p.classeMaterial || '—'}</div></div>
         <div class="detalhe-item"><div class="lbl">Local</div><div class="val" style="font-size:11px">${p.local?.trim() || '—'}</div></div>
       </div>
@@ -305,28 +303,18 @@ function abrirContagem(p) {
       <div class="produto-nome">${p.descricao}</div>
       <div class="produto-detalhes">
         <div class="detalhe-item"><div class="lbl">Unidade</div><div class="val">${p.unidade?.trim() || '—'}</div></div>
-        <div class="detalhe-item"><div class="lbl">Estoque sistema</div><div class="val">${fmt(p.estoqueAtual)}</div></div>
         <div class="detalhe-item"><div class="lbl">Local</div><div class="val" style="font-size:11px">${p.local?.trim() || '—'}</div></div>
         <div class="detalhe-item"><div class="lbl">Custo unit.</div><div class="val">R$ ${fmt(p.custo)}</div></div>
       </div>
     </div>`;
 
-  atualizarDiff();
   show('s-contagem');
 }
 
-$('btn-menos').addEventListener('click', () => { if (state.qtd > 0) { state.qtd--; $('inp-qtd').value = state.qtd; atualizarDiff(); } });
-$('btn-mais').addEventListener('click', () => { state.qtd++; $('inp-qtd').value = state.qtd; atualizarDiff(); });
-$('inp-qtd').addEventListener('input', e => { state.qtd = Math.max(0, parseInt(e.target.value) || 0); $('inp-qtd').value = state.qtd; atualizarDiff(); });
+$('btn-menos').addEventListener('click', () => { if (state.qtd > 0) { state.qtd--; $('inp-qtd').value = state.qtd; } });
+$('btn-mais').addEventListener('click', () => { state.qtd++; $('inp-qtd').value = state.qtd; });
+$('inp-qtd').addEventListener('input', e => { state.qtd = Math.max(0, parseInt(e.target.value) || 0); $('inp-qtd').value = state.qtd; });
 
-function atualizarDiff() {
-  const estoque = parseFloat(String(state.produto?.estoqueAtual || 0).replace(',','.')) || 0;
-  const diff = state.qtd - estoque;
-  let cls = 'ok', label = 'Confere com sistema', sinal = '';
-  if (diff > 0) { cls = 'excesso'; label = 'Excesso'; sinal = '+'; }
-  if (diff < 0) { cls = 'falta'; label = 'Falta'; }
-  $('diff-display').innerHTML = `<div class="diff-row ${cls}"><span class="diff-label">${label}</span><span class="diff-val">${sinal}${fmt(diff)}</span></div>`;
-}
 
 $('btn-voltar').addEventListener('click', () => show('s-busca'));
 $('btn-nova').addEventListener('click', () => show('s-busca'));
@@ -334,8 +322,6 @@ $('btn-nova').addEventListener('click', () => show('s-busca'));
 $('btn-confirmar').addEventListener('click', async () => {
   const p = state.produto;
   if (!p) return;
-  const estoque = parseFloat(String(p.estoqueAtual || 0).replace(',','.')) || 0;
-  const diff = state.qtd - estoque;
 
   $('btn-confirmar').disabled = true;
   $('btn-confirm-text').innerHTML = '<span class="spinner"></span>';
@@ -345,7 +331,7 @@ $('btn-confirmar').addEventListener('click', async () => {
       codProduto: p.codProduto, referencia: p.referencia, situacao: p.situacao,
       descricao: p.descricao, unidade: p.unidade, codClasse: p.codClasse,
       classeMaterial: p.classeMaterial, local: p.local, custo: p.custo,
-      estoqueAtual: estoque, qtdContada: state.qtd, diferenca: diff,
+      qtdContada: state.qtd,
       operador: state.nome, setor: state.setor
     };
     const res = await fetch('/api/contagem', {
@@ -355,15 +341,12 @@ $('btn-confirmar').addEventListener('click', async () => {
     if (!data.ok) throw new Error(data.error || 'Erro ao salvar');
 
     // Tela de sucesso
-    const statusCls = diff === 0 ? 'badge-green' : diff > 0 ? 'badge-amber' : 'badge-red';
-    const statusTxt = diff === 0 ? 'Conferido' : diff > 0 ? `Excesso: +${fmt(diff)}` : `Falta: ${fmt(diff)}`;
     $('resumo-card').innerHTML = `
-      <div class="produto-meta" style="margin-bottom:8px"><span class="badge ${statusCls}">${statusTxt}</span></div>
+      <div class="produto-meta" style="margin-bottom:8px"><span class="badge badge-green">Registrado</span></div>
       <div style="font-weight:600;margin-bottom:10px">${p.descricao}</div>
       <div class="divider"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
-        <div><div style="font-size:11px;color:var(--muted)">Sistema</div><div style="font-weight:700;font-size:16px">${fmt(estoque)}</div></div>
-        <div><div style="font-size:11px;color:var(--muted)">Contado</div><div style="font-weight:700;font-size:16px">${fmt(state.qtd)}</div></div>
+      <div style="display:flex;justify-content:center;margin-top:10px">
+        <div style="text-align:center"><div style="font-size:11px;color:var(--muted)">Qtd Contada</div><div style="font-weight:700;font-size:24px">${fmt(state.qtd)}</div></div>
       </div>`;
     show('s-sucesso');
   } catch(err) {
