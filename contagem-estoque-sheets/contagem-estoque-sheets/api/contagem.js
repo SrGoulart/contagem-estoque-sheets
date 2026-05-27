@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   const {
     codProduto, referencia, situacao, descricao, unidade,
     codClasse, classeMaterial, local, custo,
-    estoqueAtual, qtdContada, diferenca,
+    qtdContada,
     operador, setor
   } = req.body;
 
@@ -17,8 +17,7 @@ export default async function handler(req, res) {
   if (!RAW_KEY)
     return res.status(500).json({ error: 'PRIVATE_KEY não configurada' });
 
-  const agora  = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-  const status = diferenca === 0 ? 'OK' : diferenca > 0 ? 'EXCESSO' : 'FALTA';
+  const agora = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
   try {
     const token = await getToken(CLIENT_EMAIL, RAW_KEY);
@@ -33,7 +32,7 @@ export default async function handler(req, res) {
         'Data/Hora','Operador','Setor',
         'Cod Produto','Referencia','Situacao','Descricao',
         'Unidade','Cod Classe','Classe Material','Local',
-        'Custo Unit.','Estoque Sistema','Qtd Contada','Diferenca','Status'
+        'Custo Unit.','Qtd Contada'
       ]]);
     }
 
@@ -41,7 +40,7 @@ export default async function handler(req, res) {
       agora, operador, setor,
       String(codProduto), referencia, situacao, descricao,
       unidade, String(codClasse || ''), classeMaterial, local,
-      custo, estoqueAtual, qtdContada, diferenca, status
+      custo, qtdContada
     ]]);
 
     return res.status(200).json({ ok: true });
