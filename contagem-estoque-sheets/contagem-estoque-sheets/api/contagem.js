@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   const {
     codProduto, referencia, situacao, descricao, unidade,
     codClasse, classeMaterial, local, custo,
-    qtdContada,
+    estoqueAtual, qtdContada, tipoContagem,
     operador, setor
   } = req.body;
 
@@ -29,10 +29,10 @@ export default async function handler(req, res) {
     const cd = await check.json();
     if (!cd.values) {
       await appendRows(token, [[
-        'Data/Hora','Operador','Setor',
-        'Cod Produto','Referencia','Situacao','Descricao',
-        'Unidade','Cod Classe','Classe Material','Local',
-        'Custo Unit.','Qtd Contada'
+        'Data/Hora', 'Operador', 'Setor',
+        'Cod Produto', 'Referencia', 'Situacao', 'Descricao',
+        'Unidade', 'Cod Classe', 'Classe Material', 'Local',
+        'Custo Unit.', 'Estoque Sistema', 'Qtd Contada', 'Contagem'
       ]]);
     }
 
@@ -40,7 +40,7 @@ export default async function handler(req, res) {
       agora, operador, setor,
       String(codProduto), referencia, situacao, descricao,
       unidade, String(codClasse || ''), classeMaterial, local,
-      custo, qtdContada
+      custo, estoqueAtual, qtdContada, tipoContagem || 'Primeira Contagem'
     ]]);
 
     return res.status(200).json({ ok: true });
@@ -65,15 +65,11 @@ async function appendRows(token, values) {
   }
 }
 
-// ─── JWT / OAuth ───────────────────────────────────────────────────────────────
-
 function b64url(str) {
-  // Encode string to base64url
   return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
 function b64urlBuf(buf) {
-  // Encode ArrayBuffer to base64url
   let s = '';
   const bytes = new Uint8Array(buf);
   for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
@@ -81,14 +77,12 @@ function b64urlBuf(buf) {
 }
 
 function pemToBytes(raw) {
-  // Aceita qualquer formato: \\n, \n real, sem quebras, com/sem cabeçalho
   const cleaned = raw
     .replace(/\\n/g, '\n')
     .replace(/\r/g, '')
     .replace(/-----BEGIN PRIVATE KEY-----/g, '')
     .replace(/-----END PRIVATE KEY-----/g, '')
     .replace(/\s/g, '');
-
   const bin = atob(cleaned);
   const buf = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
@@ -97,37 +91,27 @@ function pemToBytes(raw) {
 
 async function getToken(email, rawKey) {
   const now = Math.floor(Date.now() / 1000);
-
-  const headerStr  = JSON.stringify({ alg: 'RS256', typ: 'JWT' });
-  const claimStr   = JSON.stringify({
+  const header  = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  const payload = b64url(JSON.stringify({
     iss: email,
     scope: 'https://www.googleapis.com/auth/spreadsheets',
     aud: 'https://oauth2.googleapis.com/token',
     iat: now,
     exp: now + 3600
-  });
-
-  const header  = b64url(headerStr);
-  const payload = b64url(claimStr);
+  }));
   const sigInput = header + '.' + payload;
 
-  const keyBuf = pemToBytes(rawKey);
   const cryptoKey = await crypto.subtle.importKey(
-    'pkcs8',
-    keyBuf,
+    'pkcs8', pemToBytes(rawKey),
     { name: 'RSASSA-PKCS1-v1_5', hash: { name: 'SHA-256' } },
-    false,
-    ['sign']
+    false, ['sign']
   );
-
   const sigBuf = await crypto.subtle.sign(
-    { name: 'RSASSA-PKCS1-v1_5' },
-    cryptoKey,
+    { name: 'RSASSA-PKCS1-v1_5' }, cryptoKey,
     new TextEncoder().encode(sigInput)
   );
 
   const jwt = sigInput + '.' + b64urlBuf(sigBuf);
-
   const resp = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -136,7 +120,6 @@ async function getToken(email, rawKey) {
       assertion: jwt
     })
   });
-
   const d = await resp.json();
   if (!d.access_token) throw new Error('Token inválido: ' + JSON.stringify(d));
   return d.access_token;
