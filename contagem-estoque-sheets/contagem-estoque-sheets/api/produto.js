@@ -38,12 +38,14 @@ export default async function handler(req, res) {
       estoque:   headers.indexOf('estoque_atual'),
     };
 
-    // Busca por código OU referência (case-insensitive, partial match)
-    const found = rows.slice(1).find(row => {
-      const cod = (row[idx.cod] || '').toLowerCase().trim();
-      const ref = (row[idx.ref] || '').toLowerCase().trim();
-      return cod === q || ref === q || cod.includes(q) || ref.includes(q);
-    });
+    // Busca com prioridade:
+    // 1. Código exato  2. Código parcial  3. Referência exata  4. Referência parcial
+    const data = rows.slice(1);
+    const found =
+      data.find(row => (row[idx.cod] || '').toLowerCase().trim() === q) ||
+      data.find(row => (row[idx.cod] || '').toLowerCase().trim().includes(q)) ||
+      data.find(row => (row[idx.ref] || '').toLowerCase().trim() === q) ||
+      data.find(row => (row[idx.ref] || '').toLowerCase().trim().includes(q));
 
     if (!found) return res.status(404).json({ error: 'Produto não encontrado' });
 
