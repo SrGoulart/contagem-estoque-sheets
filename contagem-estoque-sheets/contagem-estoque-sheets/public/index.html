@@ -172,20 +172,6 @@
   </div>
 
   <div class="card" style="margin-top:1rem">
-    <div class="card-label">Produto estava no local correto?</div>
-    <select id="sel-local-correto" style="width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:10px;font-size:15px;background:var(--surface);color:var(--text);margin-top:4px;appearance:none;-webkit-appearance:none;background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:right 12px center;cursor:pointer">
-      <option value="Sim">✅ Sim — local correto</option>
-      <option value="Não">❌ Não — local diferente</option>
-    </select>
-  </div>
-
-  <div class="card" id="card-local-encontrado" style="margin-top:1rem;display:none">
-    <div class="card-label">Local onde foi encontrado</div>
-    <input type="text" id="inp-local-encontrado" placeholder="Ex: Prateleira B3, Galpão 2..." autocomplete="off"
-      style="width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:10px;font-size:15px;background:var(--surface);color:var(--text);margin-top:4px;box-sizing:border-box">
-  </div>
-
-  <div class="card" style="margin-top:1rem">
     <div class="card-label">Quantidade contada</div>
     <div class="qty-row">
       <button class="qty-btn" id="btn-menos">−</button>
@@ -289,19 +275,16 @@ async function buscarProduto(q) {
 }
 
 function renderResultado(p) {
-  const situBadge = p.situacao?.trim() === 'Ativo' 
-    ? `<span class="badge badge-green">Ativo</span>`
-    : `<span class="badge badge-red">${p.situacao?.trim() || 'Inativo'}</span>`;
-
   $('resultado-busca').innerHTML = `
     <div class="section-title">Produto encontrado</div>
     <div class="produto-card" id="card-resultado" style="cursor:pointer">
-      <div class="produto-meta">${situBadge}<span class="produto-ref">Cód: ${p.codProduto}</span><span class="produto-ref">Ref: ${p.referencia}</span></div>
+      <div class="produto-meta"><span class="produto-ref">Cód: ${p.codigo}</span></div>
       <div class="produto-nome">${p.descricao}</div>
       <div class="produto-detalhes">
+        <div class="detalhe-item"><div class="lbl">Grupo</div><div class="val" style="font-size:11px">${p.grupo || '—'}</div></div>
         <div class="detalhe-item"><div class="lbl">Unidade</div><div class="val">${p.unidade?.trim() || '—'}</div></div>
-        <div class="detalhe-item"><div class="lbl">Classe</div><div class="val" style="font-size:11px">${p.classeMaterial || '—'}</div></div>
-        <div class="detalhe-item"><div class="lbl">Local</div><div class="val" style="font-size:11px">${p.local?.trim() || '—'}</div></div>
+        <div class="detalhe-item"><div class="lbl">Qtd. Sistema</div><div class="val">${p.quantidade || '0'}</div></div>
+        <div class="detalhe-item"><div class="lbl">Valor Unit.</div><div class="val">${p.valorUnitario || '—'}</div></div>
       </div>
       <button class="btn-primary" style="margin-top:14px">Registrar contagem →</button>
     </div>`;
@@ -315,22 +298,15 @@ function abrirContagem(p) {
   state.qtd = 0;
   $('inp-qtd').value = 0;
   $('sel-tipo').value = 'Primeira Contagem';
-  $('sel-local-correto').value = 'Sim';
-  $('card-local-encontrado').style.display = 'none';
-  $('inp-local-encontrado').value = '';
-
-  const situBadge = p.situacao?.trim() === 'Ativo'
-    ? `<span class="badge badge-green">Ativo</span>`
-    : `<span class="badge badge-red">${p.situacao?.trim() || 'Inativo'}</span>`;
 
   $('produto-info').innerHTML = `
     <div class="produto-card">
-      <div class="produto-meta">${situBadge}<span class="produto-ref">Cód: ${p.codProduto}</span></div>
+      <div class="produto-meta"><span class="produto-ref">Cód: ${p.codigo}</span></div>
       <div class="produto-nome">${p.descricao}</div>
       <div class="produto-detalhes">
+        <div class="detalhe-item"><div class="lbl">Grupo</div><div class="val" style="font-size:11px">${p.grupo || '—'}</div></div>
         <div class="detalhe-item"><div class="lbl">Unidade</div><div class="val">${p.unidade?.trim() || '—'}</div></div>
-        <div class="detalhe-item"><div class="lbl">Local</div><div class="val" style="font-size:11px">${p.local?.trim() || '—'}</div></div>
-        <div class="detalhe-item"><div class="lbl">Custo unit.</div><div class="val">R$ ${fmt(p.custo)}</div></div>
+        <div class="detalhe-item"><div class="lbl">Qtd. Sistema</div><div class="val">${p.quantidade || '0'}</div></div>
       </div>
     </div>`;
 
@@ -340,12 +316,6 @@ function abrirContagem(p) {
 $('btn-menos').addEventListener('click', () => { if (state.qtd > 0) { state.qtd--; $('inp-qtd').value = state.qtd; } });
 $('btn-mais').addEventListener('click', () => { state.qtd++; $('inp-qtd').value = state.qtd; });
 $('inp-qtd').addEventListener('input', e => { state.qtd = Math.max(0, parseInt(e.target.value) || 0); $('inp-qtd').value = state.qtd; });
-
-$('sel-local-correto').addEventListener('change', () => {
-  $('card-local-encontrado').style.display = $('sel-local-correto').value === 'Não' ? 'block' : 'none';
-  if ($('sel-local-correto').value === 'Sim') $('inp-local-encontrado').value = '';
-});
-
 
 $('btn-voltar').addEventListener('click', () => show('s-busca'));
 $('btn-nova').addEventListener('click', () => show('s-busca'));
@@ -358,17 +328,12 @@ $('btn-confirmar').addEventListener('click', async () => {
   $('btn-confirm-text').innerHTML = '<span class="spinner"></span>';
 
   try {
-    const localCorreto   = $('sel-local-correto').value;
-    const localEncontrado = localCorreto === 'Não' ? $('inp-local-encontrado').value.trim() : '';
-
     const body = {
-      codProduto: p.codProduto, referencia: p.referencia, situacao: p.situacao,
-      descricao: p.descricao, unidade: p.unidade, codClasse: p.codClasse,
-      classeMaterial: p.classeMaterial, local: p.local, custo: p.custo,
-      estoqueAtual: p.estoqueAtual,
+      grupo: p.grupo, codigo: p.codigo,
+      descricao: p.descricao, unidade: p.unidade,
+      quantidade: p.quantidade, valorUnitario: p.valorUnitario,
       qtdContada: state.qtd,
       tipoContagem: $('sel-tipo').value,
-      localCorreto, localEncontrado,
       operador: state.nome, setor: state.setor
     };
     const res = await fetch('/api/contagem', {
@@ -378,9 +343,6 @@ $('btn-confirmar').addEventListener('click', async () => {
     if (!data.ok) throw new Error(data.error || 'Erro ao salvar');
 
     // Tela de sucesso
-    const localInfoHtml = localCorreto === 'Não' && localEncontrado
-      ? `<div style="margin-top:8px;padding:8px 12px;background:#fff3cd;border-radius:8px;font-size:12px;color:#856404">⚠️ Local diferente: <strong>${localEncontrado}</strong></div>`
-      : '';
     $('resumo-card').innerHTML = `
       <div class="produto-meta" style="margin-bottom:8px"><span class="badge badge-green">Registrado</span></div>
       <div style="font-weight:600;margin-bottom:10px">${p.descricao}</div>
@@ -388,7 +350,7 @@ $('btn-confirmar').addEventListener('click', async () => {
       <div style="display:flex;justify-content:center;gap:24px;margin-top:10px">
         <div style="text-align:center"><div style="font-size:11px;color:var(--muted)">Tipo</div><div style="font-weight:600;font-size:14px">${$('sel-tipo').value}</div></div>
         <div style="text-align:center"><div style="font-size:11px;color:var(--muted)">Qtd Contada</div><div style="font-weight:700;font-size:24px">${fmt(state.qtd)}</div></div>
-      </div>${localInfoHtml}`;
+      </div>`;
     show('s-sucesso');
   } catch(err) {
     toast('Erro ao salvar. Tente novamente.');
